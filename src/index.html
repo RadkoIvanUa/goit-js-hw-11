@@ -3,9 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Page title</title>
+    <title>Search photo</title>
     <link rel="stylesheet" href="./sass/index.scss" />
     <script type="module" src="./index.js"></script>
   </head>
-  <body></body>
+  <body>
+    <form class="search-form" id="search-form">
+      <input
+        type="text"
+        name="searchQuery"
+        autocomplete="off"
+        placeholder="Search images..."
+        class="search-form__input"
+      />
+      <button class="search-form__button" type="submit">Search</button>
+    </form>
+    <div class="container">
+      <div class="gallery">
+        <div class="photo-card">
+          <div class="thumb">
+            <a href="./images/1.jpg"
+              ><img src="./images/1.jpg" alt="" loading="lazy"
+            /></a>
+          </div>
+          <div class="info">
+            <p class="info-item">
+              <b>Likes</b>
+              <span>12334</span>
+            </p>
+            <p class="info-item">
+              <b>Views</b>
+              <span>12334</span>
+            </p>
+            <p class="info-item">
+              <b>Comments</b>
+              <span>12334</span>
+            </p>
+            <p class="info-item">
+              <b>Downloads</b>
+              <span>12334</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
 </html>
