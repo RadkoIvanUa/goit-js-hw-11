@@ -1,66 +1,129 @@
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
-import axios from 'axios';
 import Notiflix from 'notiflix';
+import debounce from 'lodash.debounce';
 
-new SimpleLightbox('.gallery a', {
+import axiosOnSearch from './js/axios-photo';
+
+const newAxios = new axiosOnSearch();
+const lightbox = new SimpleLightbox('.gallery a', {
   captionsData: 'alt',
   captionDelay: 250,
 });
 
-const BASE_URL = 'https://pixabay.com/api/?key=';
-const API_KEY = '20762645-ca024ef3775a46c729ffc2665';
+const gallery = document.querySelector('.js-gallery');
+const form = document.querySelector('#search-form');
+const searchButton = document.querySelector('.js-search__button');
+const target = document.querySelector('.js-guard');
 
-const refs = {
-  form: document.querySelector('#search-form'),
-  gallery: document.querySelector('.js-gallery'),
+searchButton.setAttribute('disabled', 'disabled');
+
+const infinityScrollOptions = {
+  root: null,
+  rootMargin: '400px',
 };
 
-refs.form.addEventListener('submit', heandlerOnSubmit);
+const observer = new IntersectionObserver(onScroll, infinityScrollOptions);
 
-function heandlerOnSubmit(e) {
+const endObserverOptions = {
+  root: null,
+  rootMargin: '100px',
+};
+
+const endObserver = new IntersectionObserver(
+  onEndElementScroll,
+  endObserverOptions
+);
+
+form.addEventListener('submit', handlerFormSubmit);
+
+form.addEventListener('input', debounce(handlerFormInput, 300));
+
+async function handlerFormSubmit(e) {
+  searchButton.setAttribute('disabled', 'disabled');
+  observer.unobserve(target);
+  newAxios.resetPage();
+  gallery.innerHTML = '';
   e.preventDefault();
 
-  const searchQuery = e.target.elements.searchQuery.value.trim();
+  newAxios.queryText = e.target.elements.searchQuery.value.trim();
 
-  const searchedObj = searchPhoto(searchQuery);
-
-  searchedObj
-    .then(result => (refs.gallery.innerHTML = createMurkup(result.data.hits)))
-    .catch(error => {
-      if (error.response) {
-        // Запит було зроблено, і сервер відповів кодом стану, який
-        // виходить за межі 2xx
-        console.log(error.response.data);
-        console.log(error.response.status);
-        console.log(error.response.headers);
-      } else if (error.request) {
-        // Запит було зроблено, але відповіді не отримано
-        // `error.request` - це екземпляр XMLHttpRequest у браузері та екземпляр
-        // http.ClientRequest у node.js
-        console.log(error.request);
-      } else {
-        // Щось сталося під час налаштування запиту, що викликало помилку
-        console.log('Error', error.message);
-      }
-      console.log(error.config);
-    });
-}
-
-async function searchPhoto(q) {
   try {
-    const response = await axios(
-      `${BASE_URL}${API_KEY}&q=${q}}&image_type=photo&orientation=horizontal&safesearch=true&page=2`
-    );
+    await getPhoto();
+    const totalHits = localStorage.getItem('totalHits');
 
-    return response;
-  } catch {
-    throw new Error('Помилка');
+    if (Number(totalHits)) {
+      Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
+    }
+  } catch (error) {
+    console.log(error);
+    Notiflix.Notify.failure('Oops, something went wrong');
   }
 }
 
-function createMurkup(arr) {
-  return arr
+function handlerFormInput() {
+  searchButton.removeAttribute('disabled', 'disabled');
+}
+
+async function onScroll(ent) {
+  let totalPages = Number(localStorage.getItem('totalPages'));
+  if (totalPages < newAxios.page) {
+    observer.unobserve(target);
+
+    if (gallery.lastElementChild) {
+      endObserver.observe(gallery.lastElementChild);
+    }
+
+    return;
+  }
+
+  const isIntersecting = ent[0].isIntersecting;
+  if (isIntersecting) {
+    try {
+      newAxios.page += 1;
+      await getPhoto();
+      // const { height: cardHeight } = document
+      //   .querySelector('.gallery')
+      //   .firstElementChild.getBoundingClientRect();
+
+      // window.scrollBy({
+      //   top: cardHeight * 5,
+      //   behavior: 'smooth',
+      // });
+    } catch (error) {
+      console.log(error);
+      Notiflix.Notify.failure('Oops, something went wrong');
+    }
+  }
+}
+
+async function getPhoto() {
+  localStorage.removeItem('totalHits');
+  console.log(newAxios.page);
+  const result = await newAxios.getPhoto().then(response => {
+    const hits = response.data.hits;
+    const totalHits = response.data.totalHits;
+    const totalPages = totalHits / 40;
+
+    localStorage.setItem('totalPages', totalPages);
+    localStorage.setItem('totalHits', totalHits);
+
+    if (hits.length === 0) {
+      Notiflix.Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    }
+    const markup = createMarkup(hits);
+    gallery.insertAdjacentHTML('beforeend', markup);
+    observer.observe(target);
+    lightbox.refresh();
+  });
+
+  return result;
+}
+
+function createMarkup(hits) {
+  return hits
     .map(
       ({
         webformatURL,
@@ -70,32 +133,43 @@ function createMurkup(arr) {
         views,
         comments,
         downloads,
-      }) =>
-        ` <div class="photo-card">
-          <div class="thumb">
-            <a href="${largeImageURL}}"
-              ><img src="${webformatURL}" alt="${tags}" loading="lazy"
-            /></a>
-          </div>
-          <div class="info">
-            <p class="info-item">
-              <b>Likes</b>
-              <span>${likes}</span>
-            </p>
-            <p class="info-item">
-              <b>Views</b>
-              <span>${views}</span>
-            </p>
-            <p class="info-item">
-              <b>Comments</b>
-              <span>${comments}</span>
-            </p>
-            <p class="info-item">
-              <b>Downloads</b>
-              <span>${downloads}</span>
-            </p>
-          </div>
-        </div>`
+      }) => `
+      <div class="photo-card">
+        <div class="thumb">
+          <a href="${largeImageURL}">
+            <img src="${webformatURL}" alt="${tags}" loading="lazy">
+          </a>
+        </div>
+        <div class="info">
+          <p class="info-item">
+            <b>Likes</b>
+            <span>${likes}</span>
+          </p>
+          <p class="info-item">
+            <b>Views</b>
+            <span>${views}</span>
+          </p>
+          <p class="info-item">
+            <b>Comments</b>
+            <span>${comments}</span>
+          </p>
+          <p class="info-item">
+            <b>Downloads</b>
+            <span>${downloads}</span>
+          </p>
+        </div>
+      </div>
+    `
     )
     .join('');
+}
+
+async function onEndElementScroll(e) {
+  const isIntersecting = await e[0].isIntersecting;
+  if (isIntersecting) {
+    endObserver.unobserve(gallery.lastElementChild);
+    Notiflix.Notify.warning(
+      "We're sorry, but you've reached the end of search results."
+    );
+  }
 }
