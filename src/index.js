@@ -99,7 +99,6 @@ async function onScroll(ent) {
 
 async function getPhoto() {
   localStorage.removeItem('totalHits');
-  console.log(newAxios.page);
   const result = await newAxios.getPhoto().then(response => {
     const hits = response.data.hits;
     const totalHits = response.data.totalHits;
