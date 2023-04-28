@@ -40,7 +40,6 @@ form.addEventListener('submit', handlerFormSubmit);
 form.addEventListener('input', debounce(handlerFormInput, 300));
 
 async function handlerFormSubmit(e) {
-  searchButton.setAttribute('disabled', 'disabled');
   observer.unobserve(target);
   newAxios.resetPage();
   gallery.innerHTML = '';
