@@ -2,12 +2,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-
+  justify-content: center;
   margin: 20px auto;
 }
 
 .photo-card {
-  flex-basis: calc((100% - 60px) / 4);
+  // flex-basis: calc((100% - 60px) / 4);
+  flex-basis: 80%;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 1px 6px 8px 2px rgba(173, 173, 173, 0.8);
@@ -15,6 +16,18 @@
   -moz-box-shadow: 1px 6px 8px 2px rgba(173, 173, 173, 0.8);
 
   transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@media (min-width: 768.98px) {
+  .photo-card {
+    flex-basis: calc((100% - 20px) / 2);
+  }
+}
+
+@media (min-width: 1199.98px) {
+  .photo-card {
+    flex-basis: calc((100% - 60px) / 4);
+  }
 }
 
 .photo-card:hover,
